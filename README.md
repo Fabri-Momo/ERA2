@@ -125,6 +125,12 @@ tests/               pytest suite
 ERA.spec             PyInstaller specification
 ```
 
+## Reference
+
+If you use ERA in your work, please cite:
+
+> Rolland, T.; Monna, F.; Buoncristiani, J.-F.; Magail, J.; Esin, Y.; Bohard, B.; Chateau-Smith, C. (2022). Volumetric obscurance as a new tool to better visualize relief from digital elevation model. *Remote Sensing*, 14, 941. https://doi.org/10.3390/rs14040941
+
 ## Credits and licence
 
 ERA is developed by Fabrice Monna and Tanguy Rolland (Université de Bourgogne). Contact: Fabrice.Monna@u-bourgogne.fr, Tanguy.Rolland@u-bourgogne.fr.
