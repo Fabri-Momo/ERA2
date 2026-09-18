@@ -1,53 +1,132 @@
-![](media/Aspose.Words.7a17180c-06b4-4537-8392-c51cb5fb984b.001.jpeg)
+<p align="center">
+  <img src="resources/images/icon.png" width="128" alt="ERA icon">
+</p>
 
-**Welcome to ERA!**
+<h1 align="center">ERA — Extraction of Rock Art</h1>
 
-Version 1.0
+<p align="center">
+  Decorrelation stretch and supervised classification of rock paintings from digital images.<br>
+  <a href="https://github.com/Fabri-Momo/ERA2/releases/latest"><b>Download the latest release</b></a> ·
+  <a href="https://github.com/Fabri-Momo/ERA2/actions/workflows/build.yml">Build status</a>
+</p>
 
-**Presentation**. The aim of the ERA software is to help the researcher to identify rock paintings from digital images, quickly producing high-quality documentation, very simply. The three RGB colour channels of the digital image are first decorrelated and then stretched, a well-known technique used by remote sensing specialists for over thirty years. Unlike approaches previously developed specifically for rock art, several methods for data whitening are used at this step: ‘normal’ principal component analysis, zero-phase component analysis, Cholesky decomposition, and independent component analysis. These transformations produce different arrangements of colour information. The decorrelated data, stretched and scaled to fit the RGB space, are then converted into various colour spaces, selected among the most widely used: XYZ, HLS, HSV, LAB (CIELAB), Luv, CMY(K), YCrCb, YUV. The most subtle colour variations are better perceived in the new, contrasted, false-coloured images obtained from some of the resulting combinations. The researcher can then take advantage of supervised machine learning algorithms to isolate painted figures. At this step, binary pixel classification is performed either by logistic regression, support vector machine, or *k*-nearest neighbours, possibly also including confident learning. There is no need for complex tuning during the procedure, which lasts a few minutes at most, while *a posteriori* cleaning of the produced document should be minimal. The software, written in Python, is provided as a stand-alone executable program for Windows for broader diffusion, and as open-source code, capable of evolving to fit the needs of the community.
+---
 
-**Installation**. 
+## What ERA does
 
-*Windows*. Copy the ERA\_Windows folder into the directory of your choice. To run the software, double-click on ERA.exe, in the ERA\_Windows folder. Even if the program is relatively simple, this does not mean that it is small, as it contains several dependencies. As a result, the ERA\_Windows folder is quite heavy. With Avast, you may experience some difficulties in runnig ERA because it erroneously detects a Trojan-Gen virus. In this case, stop Avast while running ERA.
+ERA helps researchers identify rock paintings and produce high-quality documentation in a few minutes, with no complex tuning.
 
-*Python*. Copy the ERA\_Python folder into the directory of your choice. Use main.py to run the software with a Python interpreter. Install the dependencies listed in `requirements.txt` (`pip install -r requirements.txt`). One Qt binding is required: PyQt6, PyQt5 or PySide2 (the local `qt` shim tries them in that order). The stabilized code is tested with modern versions: Python 3.10, numpy 2.2, OpenCV 5.0, scipy 1.15, scikit-learn 1.7, scikit-image 0.25, cleanlab 2.9, qimage2ndarray 1.10, QtPy 2.4. For Linux distribution, an AppImage, containing code and dependencies is provided. It can be run without superuser permissions to launch the application.
+1. **Decorrelation.** The three RGB channels are whitened with four different methods — zero-phase component analysis (**ZCA**), principal component analysis (**PCA**), **Cholesky** decomposition and independent component analysis (**FastICA**) — then contrast-stretched. Each transform produces a different arrangement of the colour information.
+2. **Colour spaces.** Every whitened image is converted into eight colour spaces (XYZ, LAB, LUV, YCrCb, YUV, HLS, HSV, CMY), giving 36 false-colour views in which subtle pigment traces become visible.
+3. **Supervised classification.** Paint a few strokes over the figure (*include*) and over the rock (*exclude*); ERA trains a pixel classifier — logistic regression, SVM, *k*-nearest neighbours or superpixel random forest — with and without [confident learning](https://github.com/cleanlab/cleanlab) to correct labelling noise.
+4. **Outputs.** Binary drawings (also exported as **SVG** for vector post-processing), the figure in true colour on a white background, and the figure in black over the original photograph.
 
-*Building executables*. The repository ships a `ERA.spec` file for PyInstaller (one-folder bundle). From an environment with the dependencies installed (e.g. `era2`), run:
+The whole pipeline works on the image at its native bit depth (8- or 16-bit, alpha-aware); 8-bit quantisation only happens for display and export.
+
+## Installation
+
+Pre-built packages are published for every release on the [Releases page](https://github.com/Fabri-Momo/ERA2/releases/latest).
+
+| Platform | File | Notes |
+|---|---|---|
+| **Windows 10/11 (x64)** | `ERA-<version>-windows-x64.msi` | Standard installer: Start-menu and desktop shortcuts, entry in *Apps & Features*, in-place upgrades. Windows SmartScreen may warn about an unknown publisher (the package is not code-signed): choose *More info → Run anyway*. |
+| **macOS (Apple Silicon)** | `ERA-<version>-macos-arm64.zip` | Unzip and drag `ERA.app` to *Applications*. |
+| **macOS (Intel)** | `ERA-<version>-macos-x86_64.zip` | Same as above, for Intel Macs. |
+
+The macOS apps are not notarised. On first launch macOS will refuse to open them; either right-click `ERA.app` → *Open*, or run once in Terminal:
 
 ```
-pyinstaller ERA.spec --noconfirm
+xattr -cr /Applications/ERA.app
 ```
 
-The result lands in `dist/ERA/` (`ERA.exe` on Windows, `ERA.app` on macOS). Builds are native: build on each target platform/architecture, there is no cross-compilation. The application icon is `icone_ERA.ico` on Windows (also used by the MSI installer) and `icone_ERA.icns` on macOS; the in-app icon is `resources/images/icon.png`.
+<p align="center"><img src="media/screenshot-installer.png" width="480" alt="Windows installer"></p>
 
-The folder Images\_test contains the images presented as examples in the accompanying manuscript. 
+### Running from source
 
-**Opening a new image**. Images in PNG, JPG, BMP, and TIF formats are accepted by ERA. Note that capture made in RAW format, and then saved in TIF *via* proprietary software provided by the camera company, or a commercial software program (such as ADOBE Lightroom or ADOBE Photoshop), is often the best choice. For JPEG capture, always prefer the highest possible quality. Simply open the file of interest from File -> Open, or use the appropriate shortcut icon. 
+```
+git clone https://github.com/Fabri-Momo/ERA2.git
+cd ERA2
+conda create -n era2 python=3.10
+conda activate era2
+pip install -r requirements.txt
+python main.py
+```
 
-**Supervision panel**
+`requirements.txt` pins the exact versions the release is built and tested with (numpy 2.2, OpenCV 5.0, scipy 1.15, scikit-learn 1.7, scikit-image 0.25, cleanlab 2.9, PyQt6 6.8). The `qt/` shim also accepts PyQt5 or PySide2 (`QT_API=pyqt5`). Linux is supported from source with the same commands.
 
-**Image preparation and navigation among thumbnails**. The image is preprocessed using the four whitening procedures (ZCA, PCA, Cholesky, FastICA), and then transformed into other colour spaces (XYZ, Lab, Luv, YCrCb, YUV, HLS, HSV, CMY(K)). This operation takes a few seconds, depending on the size of the image, and on the computational power available. Note that a progression bar located at the bottom right of the program window indicates how quickly the work is advancing. Once the calculations have been performed, the combinations between the whitening procedure and the colour spaces used can be seen in the left part of the program window (A, Fig. 1). The operator can easily move from one whitening procedure to another by clicking on the corresponding tab. Clicking on the thumbnails will enlarge images in the main window (C, Fig. 1). Below the main window, four thumbnails represent the composite image, and each of its three channels (D, Fig. 1), which can be selected to be enlarged in the main window. Interestingly, snapshots of the main window can be taken at any time using Capture -> Snapshot (or F1) or clicking on the appropriate icon.
+## Using ERA
 
-![](media/Aspose.Words.7a17180c-06b4-4537-8392-c51cb5fb984b.002.jpeg)
+### Opening an image
 
-**Figure 1:** Screenshot of the ERA software (Supervision tab). A: Combinations between whitening procedures and colour spaces; B: Colour enhancement panel; C: Main window; D: Thumbnails of the composite image and the three channels; E: Supervision panel; F: Correction panel; G: Continue button to move to the next step once supervision has been completed. 
+PNG, JPG, BMP and TIF (8- or 16-bit) are accepted. RAW captures developed to TIF are usually the best input; for JPEG, use the highest quality. Open the file with **File → Open** (Ctrl+O) or the toolbar icon. The four whitening transforms run in the background; a progress bar at the bottom right shows the advancement.
 
-**Optional colour enhancement.** Two procedures are available to enhance colour richness (B, Fig. 1). The first (enabled by default) involves manual selection of specific areas, from which parameters for whitening transforms are extracted, and then applied to the entire image. Stroke width of the pen (10 px by default) is configurable. Once the appropriate selection has been made (producing yellow curves in the image), results are obtained by pressing the Decorrelation Refinement button. Another option consists in applying linear stretching with saturation, with a strength governed by the Contrast Boost value. By default, contrast boost equals 1, meaning that stretch is operated on each channel, between the 0.5th – 99.5th percentiles. Here also, results are obtained by pressing the Decorrelation Refinement button. Note that both enhancement procedures can be combined.
+### Supervision tab
 
-**Supervision.** This step consists in tracing curves in the image, to train the software with two sets of pixels, corresponding respectively to paintings (toggle include, and then paint in black) and substate (toggle exclude, and then paint in red) (E, Fig. 1). Pen widths (in pixels) are adjustable (default 10 px) when labelling the two classes (E, Fig. 1). At this step, the operator needs to adapt the size of the pen to minimize erroneous labelling as much as possible. Undo and Redo buttons are available; they concern only the last action. The Reset button cleans all actions made on the selected class (F. Fig. 1). Note that Undo, Redo, and Reset also apply to the colour enhancement made by selection (see above). Reset All removes everything, including supervision and any selection for optional colour enhancement. Once the supervision has appropriately covered instances in both groups to be as representative as possible, push the Continue button to run model training (G., Fig. 1).
+![Supervision tab](media/screenshot-supervision.png)
 
-![](media/Aspose.Words.7a17180c-06b4-4537-8392-c51cb5fb984b.003.jpeg)
+- **Left panel** — one tab per whitening method (ZCA, PCA, Cholesky, FastICA); each tab shows the original and the eight colour-space thumbnails. Click a thumbnail to display it in the main view. Below the main view, the composite and its three channels can be selected individually.
+- **Colour enhancement (optional)** — with the *select* pen (yellow), outline the areas from which the whitening statistics should be estimated, and/or raise *Contrast Boost* (0–20; the default 1 stretches each channel between the 0.5th and 99.5th percentiles). Press **Decorrelation Refinement** to recompute all views.
+- **Supervision** — choose *include* (black) and paint the figure, then *exclude* (red) and paint the surrounding rock. Pen widths are adjustable. **Undo / Redo** act on the last stroke of the current pen (keyboard: **U** / **R**), **Reset** clears the current pen, **Reset All** clears everything.
+- **Continue** trains the classifier and switches to the Drawing tab.
+- **Capture → Snapshot** (Ctrl+S) saves the current main view as a TIF, for manual delineation in another tool.
 
-**Figure 2:** Screenshot of the ERA software (Drawing tab). A: Tuning; B: Machine learning algorithm selection; C: Re-process button (after changes on A or B); D: Save button; E: Outputs and corresponding checkboxes for saving.
+### Drawing tab
 
-**Drawing panel**
+![Drawing tab](media/screenshot-drawing.png)
 
-**Machine learning**. The operator is then transferred to the Drawing tab (Fig. 2). By default, a logistic regression (LR) is used as classifier. It should provide good results very quickly. After visual examination of the outputs, some adjustments may nevertheless be necessary. Blur radius in pixels, level of PCA var. explained, and the *n* best channels retained for calculation can be modified (A, Fig. 2; see also the accompanying paper for their meaning and influence). After tuning modifications, a new computation must be performed by pressing the Re-process button (C, Fig. 2). Another useful possibility is to modify or supplement supervision. In this case, just click on the Supervision tab, then modify the labelling following your needs, and push the Continue button to return to the Drawing tab. The last possibility consists in selecting another classifier (B, Fig. 2). Two other machine learning algorithms are available: Support vector machine (SVM), and k-nearest neighbours (K-NN). The SVM often provides better results, but at the expense of time; patience may be required. 
+- **Prediction method** — *LR* (logistic regression, default, fast), *SVM* (often better, slower), *K-NN*, or *Superpixels* (SLIC segmentation + random forest, controlled by *Superpixel count* and *compactness*).
+- **Tuning** — *Blur Radius*, *PCA var. explained* and *n best channels* (see the paper for their meaning). Press **Re-process** after any change. You can also go back to the Supervision tab, add strokes, and press Continue again.
+- **Save** — tick the outputs you want and press **Save**; choose a destination folder. Images are written as uncompressed TIF, and the two black-and-white drawings are also written as SVG contours.
 
-**Saving outputs**. Four outputs are available: painted areas in black, with or without confident learning (see manuscript for details), or in their true colour without the background, and in black over the original colour image. Use the checkboxes to select the output desired (E, Fig. 2), and push the Save button on the right of the window (D, Fig. 2). Images are saved in uncompressed TIF format. Interestingly, outputs in black and white (i.e. the two uppermost drawings in the main window) are also systematically saved in SVG format to help scientists in the case of post-processing with a vector graphics editor.
+Help is available from the **?** menu; **? → About…** shows the installed version.
 
-**Programming**
+## Development
 
-ERA was written in Python 3.7, using the numpy, scipy, scikit-learn, qimage2ndarray, OpenCV, and PyQt5 (or PySide) libraries. The software is freely available, without any warranty about the relevance of the results produced.
+```
+conda activate era2
+python -m pytest tests -q          # 79 tests: whitening, colour spaces, contrast, ICA, classification, SVG, compatibility
+```
 
+The `tests/test_compat.py` suite checks the current pipeline against outputs of the historical (2020) implementation stored in `baseline_outputs.npz`, so the scientific transforms cannot drift silently.
 
+### Building the executables locally
+
+```
+pyinstaller ERA.spec --noconfirm                       # dist/ERA/ (Windows) or dist/ERA.app (macOS)
+powershell -File installer\build_msi.ps1 -Version 2.0.0   # Windows only: dist/ERA-2.0.0-windows-x64.msi (needs WiX 3)
+```
+
+Builds are native: each platform/architecture must be built on that platform. `VERSION` holds the version string shown in the title bar and the About box; the CI stamps it at build time.
+
+### Continuous integration and releases
+
+Every push to `main` runs the tests and builds the three packages on GitHub Actions (`.github/workflows/build.yml`), available as workflow artifacts for 30 days. To publish a release:
+
+```
+git tag v2.1.0
+git push origin v2.1.0
+```
+
+The workflow builds version `2.1.0` on Windows, macOS arm64 and macOS Intel, and attaches the MSI and the two zips to a GitHub Release.
+
+### Project layout
+
+```
+main.py              application window, worker threads, classification pipeline
+widgets.py           drawing canvas, thumbnails, result views
+theme.py             Qt stylesheet and palette
+imagedata.py         image loading (native bit depth), whitening cache, colour bundles
+processors/          ZCA, PCA, Cholesky, FastICA whitening (shared maths in utils.py)
+color_interpreters/  XYZ, LAB, LUV, YCrCb, YUV, HLS, HSV, CMY transforms
+qt/                  binding shim (PyQt6 / PyQt5 / PySide2 via QtPy)
+resources/           icon, toolbar SVGs, help pages (compiled into qrc_resources.py by build_qrc.py)
+installer/           WiX authoring and bitmaps for the Windows MSI
+tests/               pytest suite
+ERA.spec             PyInstaller specification
+```
+
+## Credits and licence
+
+ERA is developed by Fabrice Monna and Tanguy Rolland (Université de Bourgogne). Contact: Fabrice.Monna@u-bourgogne.fr, Tanguy.Rolland@u-bourgogne.fr.
+
+Written in Python with PyQt6, numpy, scipy, scikit-learn, scikit-image, cleanlab, OpenCV and qimage2ndarray. The software is freely available, without any warranty about the relevance of the results produced.
