@@ -54,16 +54,6 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests -q
 
-      - name: Create macOS icon
-        if: runner.os == 'macOS'
-        run: |
-          mkdir icon.iconset
-          for s in 16 32 128 256 512; do
-            sips -z $s $s resources/images/icon.png --out icon.iconset/icon_${s}x${s}.png
-            sips -z $((s*2)) $((s*2)) resources/images/icon.png --out icon.iconset/icon_${s}x${s}@2x.png
-          done
-          iconutil -c icns icon.iconset -o icone_ERA.icns
-
       - name: Build with PyInstaller
         run: pyinstaller ERA.spec --noconfirm
 

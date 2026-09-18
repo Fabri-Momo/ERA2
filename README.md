@@ -18,7 +18,7 @@ Version 1.0
 pyinstaller ERA.spec --noconfirm
 ```
 
-The result lands in `dist/ERA/` (`ERA.exe` on Windows, `ERA.app` on macOS). Builds are native: build on each target platform/architecture, there is no cross-compilation. On Windows the `icone_ERA.ico` icon is used automatically; on macOS an `icone_ERA.icns` file must be provided at the project root for the bundle icon (the build works without it, just without a custom icon).
+The result lands in `dist/ERA/` (`ERA.exe` on Windows, `ERA.app` on macOS). Builds are native: build on each target platform/architecture, there is no cross-compilation. The application icon is `icone_ERA.ico` on Windows (also used by the MSI installer) and `icone_ERA.icns` on macOS; the in-app icon is `resources/images/icon.png`.
 
 The folder Images\_test contains the images presented as examples in the accompanying manuscript. 
 
