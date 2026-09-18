@@ -1,0 +1,38 @@
+# ERA1 baseline report
+python 3.10.18, cv2 5.0.0, numpy 2.2.6
+sklearn 1.7.2
+
+## 1. 16-bit TIFF loading (current: cv2.imread without flags)
+  cv2.imread(path) dtype=uint8, unique levels=2
+  IMREAD_UNCHANGED   dtype=uint16, unique levels=256
+  RGBA via imread(): shape=(64, 64, 3) dtype=uint8
+  RGBA UNCHANGED:    shape=(64, 64, 4) dtype=uint16
+
+## 2. new_range() on degenerate data
+  uniform input -> warnings: ['invalid value encountered in divide', 'invalid value encountered in divide', 'invalid value encountered in divide', 'invalid value encountered in cast']
+  uniform output unique: [0], any NaN in float stage: False
+  constant channel -> warnings: ['invalid value encountered in divide', 'invalid value encountered in cast']
+  constant channel output col1 unique: [0]
+
+## 3. FastICA defaults / reproducibility
+  FastICA signature: (self, n_components=None, *, algorithm='parallel', whiten='unit-variance', fun='logcosh', fun_args=None, max_iter=200, tol=0.0001, w_init=None, whiten_solver='svd', random_state=None)
+  two default runs identical: False
+
+## 4. Plugin discovery
+  processors: ['ZCA', 'PCA', 'Cholesky', 'FastICA']
+  interpreters: ['RGB', 'XYZ', 'LAB', 'LUV', 'YCrCb', 'YUV', 'HLS', 'HSV', 'CMY(K)']
+
+## 5. Memory estimate
+  combos = 36; per combo uint8 buffer = 60 MB + 3 channel copies = 20 MB each
+  eager total ~= 4.3 GB (buffers + channel copies), + QImages
+
+## 6. findContours on current mask convention (figure=0 black, bg=255)
+  contours found on raw mask: 2
+    bounding rect: x=0 y=0 w=100 h=100
+    bounding rect: x=29 y=29 w=33 h=33
+  contours on inverted (fg=255): 1
+    bounding rect: x=30 y=30 w=31 h=31
+
+## 7. Saving historical pipeline outputs for compat tests
+  saved 37 arrays to F:\NextCloud\ERA1\baseline_outputs.npz
+  saved keep=5 variant (36 arrays)

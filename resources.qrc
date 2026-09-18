@@ -1,0 +1,15 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+<file alias="icon.png">resources/images/icon.png</file>
+<file alias="snap.svg">resources/images/camera.svg</file>
+<file alias="open.svg">resources/images/file-upload.svg</file>
+<file alias="exit.svg">resources/images/window-close.svg</file>
+</qresource>
+<qresource>
+<file alias="credits.html">resources/doc/en/credits.html</file>
+<file alias="workflow.html">resources/doc/en/workflow.html</file>
+<file alias="index.html">resources/doc/en/index.html</file>
+<file alias="open.html">resources/doc/en/open.html</file>
+<file alias="decorrelation.html">resources/doc/en/decorrelation.html</file>
+</qresource>
+</RCC>

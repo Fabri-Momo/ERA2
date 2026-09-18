@@ -1,0 +1,14 @@
+# ERA — stabilised runtime dependencies
+# Exact versions of the era2 environment (Python 3.10).
+numpy==2.2.6
+opencv-python==5.0.0.93
+scipy==1.15.2
+scikit-learn==1.7.2
+scikit-image==0.25.2
+cleanlab==2.9.0
+qimage2ndarray==1.10.0
+QtPy==2.4.3
+# Qt binding used by the local qt/ shim (QT_API=pyqt6).
+# PyQt5>=5.15 remains supported via QT_API=pyqt5.
+PyQt6==6.8.1
+pytest==9.1.1       # test suite only
