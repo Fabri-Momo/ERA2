@@ -4,7 +4,7 @@ import sys
 
 from PyInstaller.utils.hooks import collect_submodules
 
-datas = [('doc', 'doc'), ('resources', 'resources')]
+datas = [('doc', 'doc'), ('resources', 'resources'), ('VERSION', '.')]
 
 # Local plugin packages: collect_submodules cannot see them from the spec
 # (the project dir is not on sys.path of the isolated subprocess), so the

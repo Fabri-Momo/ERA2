@@ -2,6 +2,4 @@ For more information contact Fabrice Monna: Fabrice.Monna@u-bourgogne.fr
 
 or Tanguy Rolland: Tanguy.Rolland@u-bourgogne.fr
 
-The software has been programmed with Python 3.7 with the help of the PyQt5, numpy, PIL, and OpenCV libraries.
-
-Version 1.0, 2020
+The software is written in Python with the help of the PyQt6, numpy, scipy, scikit-learn, scikit-image, cleanlab and OpenCV libraries.

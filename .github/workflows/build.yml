@@ -35,6 +35,10 @@ jobs:
             echo "version=2.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Stamp version
+        shell: bash
+        run: echo "${{ steps.version.outputs.version }}" > VERSION
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'

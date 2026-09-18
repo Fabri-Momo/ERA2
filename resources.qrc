@@ -4,6 +4,8 @@
 <file alias="snap.svg">resources/images/camera.svg</file>
 <file alias="open.svg">resources/images/file-upload.svg</file>
 <file alias="exit.svg">resources/images/window-close.svg</file>
+<file alias="arrow-up.svg">resources/images/arrow-up.svg</file>
+<file alias="arrow-down.svg">resources/images/arrow-down.svg</file>
 </qresource>
 <qresource>
 <file alias="credits.html">resources/doc/en/credits.html</file>

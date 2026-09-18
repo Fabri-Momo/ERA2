@@ -7,6 +7,7 @@ from imagedata import ImageData
 from qt import QtGui, QtWidgets, QtCore
 import qrc_resources
 from processors.utils import InsufficientSelectionError
+from theme import apply_theme
 
 import cv2
 from scipy.stats import ttest_ind
@@ -41,6 +42,17 @@ if getattr(sys, 'frozen', False):
 else:
     root_folder = os.path.dirname(os.path.abspath(__file__))
 doc_folder = os.path.join(root_folder, 'resources', 'doc')
+
+
+def read_version():
+    """Version string from the VERSION file (stamped by CI), or 'dev'."""
+    try:
+        with open(os.path.join(root_folder, 'VERSION'), encoding='utf-8') as f:
+            return f.read().strip() or 'dev'
+    except OSError:
+        return 'dev'
+
+APP_VERSION = read_version()
 
 
 def _resolve_about_path():
@@ -434,7 +446,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.graphics_scene = None
         self._worker = None
         self._busy = False
-        self.setWindowTitle("ERA — Extraction of Rock Art")
+        self.setWindowTitle(f"ERA — Extraction of Rock Art  v{APP_VERSION}")
         self.setWindowIcon(QtGui.QIcon(':/icon.png'))
         self.data = ImageData()
         self.central_widget = QtWidgets.QWidget()               
@@ -501,6 +513,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status = self.statusBar()
         self.status.showMessage(self.tr("Ready to rock"))
         self.progress_bar = QtWidgets.QProgressBar()
+        self.progress_bar.setFixedWidth(260)
+        self.progress_bar.setTextVisible(False)
         self.status.addPermanentWidget(self.progress_bar)
 
         ### layout
@@ -563,6 +577,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.include_pen_size_spinbox.valueChanged.connect(self.set_include_pen_width)
         self.exclude_pen_size_spinbox = QtWidgets.QSpinBox()
         self.exclude_pen_size_spinbox.valueChanged.connect(self.set_exclude_pen_width)
+        for spinbox in (self.include_pen_size_spinbox, self.exclude_pen_size_spinbox):
+            spinbox.setFixedWidth(80)
         supervision_tools_layout.addRow(include_draw_method_radio, self.include_pen_size_spinbox)
         supervision_tools_layout.addRow(exclude_draw_method_radio, self.exclude_pen_size_spinbox)
         undo_stroke_button = QtWidgets.QPushButton('Undo')
@@ -579,6 +595,7 @@ class MainWindow(QtWidgets.QMainWindow):
         resetall_supervision_button.setToolTip(self.tr("Reset all modes"))
         resetall_supervision_button.clicked.connect(self.reset_all_strokes)
         continue_push_button = QtWidgets.QPushButton(self.tr('Continue'))
+        continue_push_button.setProperty('primary', True)
         continue_push_button.clicked.connect(self.process)
         supervision_tools_layout.addRow(reset_supervision_button, resetall_supervision_button)
         supervision_tools_layout.addRow(continue_push_button)
@@ -613,6 +630,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contrast_boost_spinbox.setRange(0, 20)
         process_form_layout.addRow(self.tr('Contrast Boost'), self.contrast_boost_spinbox)
         process_push_button = QtWidgets.QPushButton(self.tr('Decorrelation Refinement'))
+        process_push_button.setProperty('primary', True)
         process_push_button.clicked.connect(self.decorrelate)
 
 
@@ -702,12 +720,13 @@ class MainWindow(QtWidgets.QMainWindow):
         refine_layout.addRow(self.tr('Superpixel compactness:'), self.superpixel_compactness_spinbox)
 
         btnReprocess = QtWidgets.QPushButton(self.tr("Re-process"), self)
-        btnReprocess.setFixedWidth(100)
+        btnReprocess.setProperty('primary', True)
+        btnReprocess.setMinimumWidth(110)
         btnReprocess.setToolTip(self.tr("Reprocess <i>Calculate</i>"))      
         btnReprocess.clicked.connect(self.process)
         #
         btnSave = QtWidgets.QPushButton(self.tr("Save"), self)
-        btnSave.setFixedWidth(100)
+        btnSave.setMinimumWidth(110)
         btnSave.setToolTip(self.tr("Save the checked images"))  
         refine_layout.addRow(btnReprocess, btnSave)
         btnSave.clicked.connect(self.saveImage)
@@ -1167,7 +1186,13 @@ for painting the areas corresponding to the figure and the surrounding, respecti
         with open(about_path, 'r', encoding='utf-8') as about_file:
             message = about_file.read()
 
-        QtWidgets.QMessageBox.about(self, "General workflow", message)
+        box = QtWidgets.QMessageBox(self)
+        box.setWindowTitle("About ERA")
+        box.setIconPixmap(QtGui.QPixmap(':/icon.png').scaled(
+            96, 96, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+        box.setText(f"<b>ERA — Extraction of Rock Art</b><br>Version {APP_VERSION}")
+        box.setInformativeText(message)
+        box.exec()
     
     def modal_error(self, message):
         QtWidgets.QMessageBox.critical(self, "ERA - Error", message)
@@ -1181,6 +1206,7 @@ if __name__ == '__main__':
     # The UI is always in English: no translator is installed, and Qt's own
     # dialogs (file chooser, message boxes) are forced to the C locale.
     QtCore.QLocale.setDefault(QtCore.QLocale(QtCore.QLocale.C))
+    apply_theme(app)
     window = MainWindow()
     window.showMaximized()
     app.exec()

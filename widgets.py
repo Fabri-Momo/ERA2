@@ -1,4 +1,5 @@
 from qt import QtWidgets, QtGui, QtCore
+from theme import ACCENT, ACCENT_DARK, BORDER, PANEL, TEXT
 
 # Write select.png / include.png / exclude.png to the current directory while
 # drawing.  Debugging aid only; disabled in normal use.
@@ -37,60 +38,94 @@ class ColorVariant(QtWidgets.QAbstractButton):
         self.thumbnail_proportion = self.image.size().height()/self.image.size().width()
         self.setCheckable(True)
         self.setChecked(False)
+        self._hover = False
+        self.setMouseTracking(True)
 
     def sizeHint(self):
         return QtCore.QSize(150, 150)
 
+    def enterEvent(self, event):
+        self._hover = True
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hover = False
+        self.update()
+        super().leaveEvent(event)
+
     def paintEvent(self, event):
-        #
-        # |—widget————————————————|
-        # ||——frame——————————————||
-        # || label               ||
-        # |||——————thumbnail box|||
-        # |||m   margin         |||
-        # |||a  |—————————————| |||
-        # |||r  |  thumbnail  | |||
-        # |||g  |             | |||
-        # |||i  |—————————————| |||
-        # |||n                  |||
-        # |||———————————————————|||
-        # ||—————————————————————||
-        # |———————————————————————|
-        #
-        widget_height = self.size().height()
-        widget_width = self.size().width()
-        frame_offset = 1
-        label_height = 17
-        thumbnail_box_height = widget_height - 2 * frame_offset - label_height
-        thumbnail_box_width = widget_width - 2 * frame_offset
-        thumbnail_box_proportion = thumbnail_box_height/thumbnail_box_width
-
-        if self.thumbnail_proportion > thumbnail_box_proportion:
-            thumbnail = self.image.scaledToHeight(thumbnail_box_height)
-        else:
-            thumbnail = self.image.scaledToWidth(thumbnail_box_width)
-
-        vertical_margin = (thumbnail_box_height - thumbnail.size().height()) // 2
-        horizontal_margin = (thumbnail_box_width - thumbnail.size().width()) // 2
-        thumbnail_vertical_anchor =  frame_offset + label_height + vertical_margin
-        thumbnail_horizontal_anchor = frame_offset + horizontal_margin 
-
+        checked = self.isChecked()
         painter = QtGui.QPainter(self)
-        # frame
-        painter.drawRect(frame_offset, frame_offset, self.size().width() - 2 * frame_offset, self.size().height() - 2 * frame_offset)
-        # thumbnail
-        painter.drawImage(thumbnail_horizontal_anchor, thumbnail_vertical_anchor, thumbnail)
-        # label
-        radio_pos = QtCore.QPoint(10, 10)
-        painter.drawEllipse(radio_pos, 5, 5)
-        font = QtGui.QFont()
+        painter.setRenderHints(QtGui.QPainter.Antialiasing |
+                             QtGui.QPainter.SmoothPixmapTransform)
+
+        # outer card
+        card = QtCore.QRectF(self.rect()).adjusted(1.5, 1.5, -1.5, -1.5)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(PANEL))
+        painter.drawRoundedRect(card, 8, 8)
+        if checked:
+            border_pen = QtGui.QPen(QtGui.QColor(ACCENT), 2)
+        elif self._hover:
+            border_pen = QtGui.QPen(QtGui.QColor('#C9752A'), 1)
+        else:
+            border_pen = QtGui.QPen(QtGui.QColor(BORDER), 1)
+        painter.setPen(border_pen)
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.drawRoundedRect(card, 8, 8)
+
+        # label band (22 px at top, left-aligned, elided)
+        label_height = 22
+        label_rect = QtCore.QRectF(card).adjusted(10, 0, -4, 0)
+        label_rect.setHeight(label_height)
+        font = painter.font()
         font.setPointSize(10)
+        font.setBold(True)
         painter.setFont(font)
-        painter.drawText(18, 15, self.text())
-        if self.isChecked():
-            brush = QtGui.QBrush(QtCore.Qt.black)
-            painter.setBrush(brush)
-            painter.drawEllipse(radio_pos, 3, 3)
+        metrics = QtGui.QFontMetrics(font)
+        text = metrics.elidedText(self.text(), QtCore.Qt.ElideRight,
+                                  int(label_rect.width()))
+        painter.setPen(QtGui.QColor(ACCENT_DARK if checked else TEXT))
+        painter.drawText(label_rect,
+                         QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, text)
+
+        # thumbnail box below the label band, 8 px margins, aspect preserved
+        box = card.adjusted(8, label_height + 8, -8, -8)
+        if self.thumbnail_proportion > box.height()/box.width():
+            thumbnail = self.image.scaledToHeight(
+                int(box.height()), QtCore.Qt.SmoothTransformation)
+        else:
+            thumbnail = self.image.scaledToWidth(
+                int(box.width()), QtCore.Qt.SmoothTransformation)
+        target = QtCore.QRectF(
+            box.x() + (box.width() - thumbnail.width()) / 2,
+            box.y() + (box.height() - thumbnail.height()) / 2,
+            thumbnail.width(), thumbnail.height())
+        clip = QtGui.QPainterPath()
+        clip.addRoundedRect(target, 4, 4)
+        painter.setClipPath(clip)
+        painter.drawImage(target, thumbnail)
+        painter.setClipping(False)
+
+        # checked badge: ochre circle + white check, top-right corner
+        if checked:
+            badge = QtCore.QRectF(card.right() - 22, card.top() + 6, 16, 16)
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(QtGui.QColor(ACCENT))
+            painter.drawEllipse(badge)
+            check_pen = QtGui.QPen(QtCore.Qt.white, 2)
+            check_pen.setCapStyle(QtCore.Qt.RoundCap)
+            check_pen.setJoinStyle(QtCore.Qt.RoundJoin)
+            painter.setPen(check_pen)
+            painter.drawPolyline(QtGui.QPolygonF([
+                QtCore.QPointF(badge.left() + 0.25 * badge.width(),
+                               badge.top() + 0.50 * badge.height()),
+                QtCore.QPointF(badge.left() + 0.45 * badge.width(),
+                               badge.top() + 0.70 * badge.height()),
+                QtCore.QPointF(badge.left() + 0.75 * badge.width(),
+                               badge.top() + 0.30 * badge.height()),
+            ]))
 
 
 class ImageWidget(QtWidgets.QGraphicsView):
@@ -471,6 +506,8 @@ class ResultWidget(QtWidgets.QWidget):
         # Set Anchors
         self.view.setTransformationAnchor(QtWidgets.QGraphicsView.NoAnchor)
         self.view.setResizeAnchor(QtWidgets.QGraphicsView.NoAnchor)
+        if self.view.size().width() == 0 or self.view.size().height() == 0:
+            return
         delta_prop = self.view.size().width()/self.view.size().height() - self.view.prop
         if delta_prop >= 0:
             scale = (self.view.size().height()+5)/self.view.bounding_box.height()
