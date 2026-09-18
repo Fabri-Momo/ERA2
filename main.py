@@ -55,6 +55,41 @@ def read_version():
 APP_VERSION = read_version()
 
 
+def _log_dir():
+    """Per-user writable directory for the application log."""
+    if sys.platform == 'win32':
+        base = os.environ.get('LOCALAPPDATA') or os.path.expanduser('~')
+    elif sys.platform == 'darwin':
+        base = os.path.expanduser('~/Library/Logs')
+    else:
+        base = os.environ.get('XDG_STATE_HOME') or os.path.expanduser('~/.local/state')
+    return os.path.join(base, 'ERA')
+
+
+def setup_std_streams():
+    """Give the process usable stdout/stderr and a log file.
+
+    In a windowed (console-less) executable sys.stdout and sys.stderr are
+    None; any library that writes or flushes them (cleanlab does
+    ``sys.stdout.flush()``) would then crash the computation.  Redirect them
+    to a per-user log file, which also records uncaught worker errors.
+    """
+    if sys.stdout is not None and sys.stderr is not None:
+        return None
+    try:
+        log_dir = _log_dir()
+        os.makedirs(log_dir, exist_ok=True)
+        stream = open(os.path.join(log_dir, 'era.log'), 'a',
+                      buffering=1, encoding='utf-8', errors='replace')
+    except OSError:
+        stream = open(os.devnull, 'w')
+    if sys.stdout is None:
+        sys.stdout = stream
+    if sys.stderr is None:
+        sys.stderr = stream
+    return stream
+
+
 def _resolve_about_path():
     """Return the English about.txt (the UI is always in English)."""
     candidates = [
@@ -1202,6 +1237,11 @@ if __name__ == '__main__':
     # Required for multiprocessing (cleanlab) in a frozen executable.
     import multiprocessing
     multiprocessing.freeze_support()
+    setup_std_streams()
+    logging.basicConfig(
+        stream=sys.stderr, level=logging.INFO,
+        format='%(asctime)s %(levelname)s %(name)s: %(message)s')
+    logger.info('ERA %s starting', APP_VERSION)
     app = QtWidgets.QApplication(sys.argv)
     # The UI is always in English: no translator is installed, and Qt's own
     # dialogs (file chooser, message boxes) are forced to the C locale.
