@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WiX 3 authoring for the ERA Windows installer (per-machine, x64).
+
+  The application files are harvested from dist\ERA by heat.exe into
+  Files.wxs (ComponentGroup "ERAFiles", directory INSTALLFOLDER); this file
+  only adds the product definition, the Start-menu shortcut and the upgrade
+  logic.  Expected preprocessor variables:
+    Version    x.y.z product version
+    SourceDir  path of dist\ERA (used by Files.wxs)
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+  <Product Id="*"
+           Name="ERA - Extraction of Rock Art"
+           Language="1033"
+           Version="$(var.Version)"
+           Manufacturer="Universite de Bourgogne"
+           UpgradeCode="5C717091-7E76-40DC-A037-6E3968C12852">
+
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Platform="x64"
+             Description="ERA - Extraction of Rock Art $(var.Version)" />
+
+    <!-- Never keep two versions side by side; block downgrades. -->
+    <MajorUpgrade Schedule="afterInstallInitialize"
+                  DowngradeErrorMessage="A newer version of ERA is already installed." />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="ERAIcon.exe" SourceFile="icone_ERA.ico" />
+    <Property Id="ARPPRODUCTICON" Value="ERAIcon.exe" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Fabri-Momo/ERA2" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="ERA" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ERAMenuFolder" Name="ERA" />
+      </Directory>
+      <Directory Id="DesktopFolder" />
+    </Directory>
+
+    <DirectoryRef Id="ERAMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="B4F1C3A2-6D0E-4F7B-9A21-3E8D5C7A1F02" Win64="yes">
+        <Shortcut Id="ERAStartMenuShortcut"
+                  Name="ERA"
+                  Description="Extraction of Rock Art"
+                  Target="[INSTALLFOLDER]ERA.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="ERAIcon.exe" />
+        <RemoveFolder Id="RemoveERAMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\ERA\Installer"
+                       Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="7A9E2D41-0C5B-4E68-B3F7-1D6C8A2E5B03" Win64="yes">
+        <Shortcut Id="ERADesktopShortcut"
+                  Name="ERA"
+                  Description="Extraction of Rock Art"
+                  Target="[INSTALLFOLDER]ERA.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="ERAIcon.exe" />
+        <RegistryValue Root="HKCU" Key="Software\ERA\Installer"
+                       Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="MainFeature" Title="ERA" Level="1" Absent="disallow">
+      <ComponentGroupRef Id="ERAFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+    <Feature Id="DesktopShortcutFeature" Title="Desktop shortcut" Level="1">
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+
+    <UIRef Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <WixVariable Id="WixUILicenseRtf" Value="installer\License.rtf" />
+  </Product>
+</Wix>
