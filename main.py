@@ -3,13 +3,14 @@ import logging
 import numpy
 import os
 from widgets import *
-from imagedata import ImageData
+from imagedata import ImageData, color_interpreters_dict
 from qt import QtGui, QtWidgets, QtCore
 import qrc_resources
 from processors.utils import InsufficientSelectionError
 from theme import apply_theme
 
 import cv2
+from scipy.spatial import cKDTree
 from scipy.stats import ttest_ind
 from cleanlab.classification import CleanLearning
 from sklearn.linear_model import LogisticRegression
@@ -31,6 +32,7 @@ DEFAULT_PCA_SIZE = 97
 DEFAULT_N_SIZE = 30
 DEFAULT_GAIN = 1
 DEFAULT_PEN_SIZE = 10
+DEFAULT_SUPERPIXEL_COUNT = 50000
 
 # Minimum labelled pixels per class before a classifier is trained.
 MIN_SUPERVISION_PIXELS = 20
@@ -189,21 +191,50 @@ def check_supervision(case_mask, not_case_mask,
     return None
 
 
+# The label-issue filter runs on <= 50k samples: a process pool would cost
+# more in spawn overhead (and, frozen, in extra ERA.exe launches) than it
+# saves.  seed=0 makes the CV shuffle reproducible run to run.
+CLEANLAB_KWARGS = dict(seed=0, find_label_issues_kwargs={'n_jobs': 1})
+
+
+class FastKNeighborsClassifier(KNeighborsClassifier):
+    """KNeighborsClassifier whose predict() uses a multi-threaded cKDTree query.
+
+    Same neighbours, same majority vote, same result as the parent class;
+    only the query is parallel (sklearn's tree query is not).  fit and
+    predict_proba are inherited unchanged.
+    """
+    def predict(self, X):
+        if getattr(self, 'outputs_2d_', False) or self.weights != 'uniform' \
+                or self.metric not in ('minkowski', 'euclidean') or self.p != 2:
+            return super().predict(X)
+        X = numpy.asarray(X, dtype=numpy.float64)
+        _, idx = cKDTree(self._fit_X).query(X, k=self.n_neighbors, workers=-1)
+        idx = idx.reshape(len(X), -1)
+        votes = self._y[idx]
+        counts = numpy.stack([(votes == c).sum(axis=1)
+                              for c in range(len(self.classes_))], axis=1)
+        return self.classes_[counts.argmax(axis=1)]
+
+
 def get_classifiers(prediction_method):
     """Return (clf_with_noisy_labels, baseline_clf, extra_scaler)."""
     if prediction_method == 'LR':
         base = LogisticRegression(solver='lbfgs', max_iter=10000)
-        clfwn = CleanLearning(clf=LogisticRegression(solver='lbfgs', max_iter=10000))
+        clfwn = CleanLearning(clf=LogisticRegression(solver='lbfgs', max_iter=10000),
+                              **CLEANLAB_KWARGS)
         return clfwn, base, None
 
     if prediction_method == 'K-NN':
-        base = KNeighborsClassifier(n_neighbors=11, n_jobs=-1)
-        clfwn = CleanLearning(clf=KNeighborsClassifier(n_neighbors=11, n_jobs=-1))
+        base = FastKNeighborsClassifier(n_neighbors=11, n_jobs=-1)
+        clfwn = CleanLearning(clf=FastKNeighborsClassifier(n_neighbors=11, n_jobs=-1),
+                              **CLEANLAB_KWARGS)
         return clfwn, base, None
 
     if prediction_method == 'SVM':
         base = LinearSVC(dual='auto', max_iter=10000)
-        clfwn = CleanLearning(clf=CalibratedClassifierCV(LinearSVC(dual='auto', max_iter=10000)))
+        clfwn = CleanLearning(clf=CalibratedClassifierCV(LinearSVC(dual='auto', max_iter=10000)),
+                              **CLEANLAB_KWARGS)
         return clfwn, base, StandardScaler()
 
     if prediction_method == 'Superpixels':
@@ -221,7 +252,7 @@ def get_classifiers(prediction_method):
             n_jobs=-1,
             random_state=42,
             class_weight='balanced',
-        ))
+        ), **CLEANLAB_KWARGS)
         return clfwn, base, None
 
     raise ValueError(f"Unknown prediction method: {prediction_method}")
@@ -340,16 +371,19 @@ def collect_selected(data, selected, blur, worker, total, step0):
     height, width = data.raw_display.shape[:2]
     n_sel = int(selected.sum())
     cols = numpy.empty((height * width, n_sel), dtype=numpy.float32)
-    chan = 0
     k = 0
-    for i, (proc, cs, native) in enumerate(data.iter_natives()):
+    for i, (proc, cs) in enumerate(
+            (p, c) for p in data.processor_names
+            for c in data.colorspace_names):
         worker.report(step0 + i + 1, total)
+        if not selected[3 * i:3 * i + 3].any():
+            continue
+        native = color_interpreters_dict[cs].interpret(data.whitened[proc])
         blurred = cv2.blur(native, (blur, blur))
         for c in range(3):
-            if selected[chan]:
+            if selected[3 * i + c]:
                 cols[:, k] = blurred[..., c].ravel()
                 k += 1
-            chan += 1
     return cols
 
 
@@ -746,7 +780,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.superpixel_count_spinbox = QtWidgets.QSpinBox(self)
         self.superpixel_count_spinbox.setRange(50, 100000)
         self.superpixel_count_spinbox.setSingleStep(50)
-        self.superpixel_count_spinbox.setValue(500)
+        self.superpixel_count_spinbox.setValue(DEFAULT_SUPERPIXEL_COUNT)
         refine_layout.addRow(self.tr('Superpixel count:'), self.superpixel_count_spinbox)
 
         self.superpixel_compactness_spinbox = QtWidgets.QSpinBox(self)
@@ -851,7 +885,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.Nsize.setValue(DEFAULT_N_SIZE)
         self.PCAsize.setValue(DEFAULT_PCA_SIZE)
         self.blursize.setValue(DEFAULT_BLUR)
-        self.superpixel_count_spinbox.setValue(500)
+        self.superpixel_count_spinbox.setValue(DEFAULT_SUPERPIXEL_COUNT)
         self.superpixel_compactness_spinbox.setValue(10)
         for result in self.results.values():
             view = result['view']

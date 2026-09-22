@@ -23,6 +23,19 @@ ERA helps researchers identify rock paintings and produce high-quality documenta
 
 The whole pipeline works on the image at its native bit depth (8- or 16-bit, alpha-aware); 8-bit quantisation only happens for display and export.
 
+### Much faster than ERA 1
+
+ERA 2 produces exactly the same transforms as the original 2020 implementation (verified by the compatibility test suite) but is considerably faster. On a 2000 × 1260 photograph and a 16-core PC:
+
+| Step | ERA 1 | ERA 2 |
+|---|---:|---:|
+| Opening an image (four whitening transforms) | 15 s | **2 s** |
+| Decorrelation refinement | 2.5 s | **1 s** |
+| Classification — LR / SVM / Superpixels | 9 – 12 s | **5 – 8 s** |
+| Classification — K-NN | 290 s | **7 s** |
+
+The K-NN prediction now runs a multi-threaded nearest-neighbour query (same neighbours, same vote, identical result), redundant validation passes over the full image were removed, and the confident-learning step no longer spawns worker processes. Results are also fully reproducible: the same image and strokes always give the same drawing, run after run.
+
 ## Installation
 
 Pre-built packages are published for every release on the [Releases page](https://github.com/Fabri-Momo/ERA2/releases/latest).
@@ -74,7 +87,7 @@ PNG, JPG, BMP and TIF (8- or 16-bit) are accepted. RAW captures developed to TIF
 
 ![Drawing tab](media/screenshot-drawing.png)
 
-- **Prediction method** — *LR* (logistic regression, default, fast), *SVM* (often better, slower), *K-NN*, or *Superpixels* (SLIC segmentation + random forest, controlled by *Superpixel count* and *compactness*).
+- **Prediction method** — *LR* (logistic regression, default), *SVM* (often better), *K-NN* (*k*-nearest neighbours), or *Superpixels* (SLIC segmentation + random forest, controlled by *Superpixel count* — default 50 000 — and *compactness*). All four methods now complete in a few seconds on a typical photograph.
 - **Tuning** — *Blur Radius*, *PCA var. explained* and *n best channels* (see the paper for their meaning). Press **Re-process** after any change. You can also go back to the Supervision tab, add strokes, and press Continue again.
 - **Save** — tick the outputs you want and press **Save**; choose a destination folder. Images are written as uncompressed TIF, and the two black-and-white drawings are also written as SVG contours.
 
@@ -84,7 +97,7 @@ Help is available from the **?** menu; **? → About…** shows the installed ve
 
 ```
 conda activate era2
-python -m pytest tests -q          # 79 tests: whitening, colour spaces, contrast, ICA, classification, SVG, compatibility
+python -m pytest tests -q          # 87 tests: whitening, colour spaces, contrast, ICA, classification, SVG, compatibility
 ```
 
 The `tests/test_compat.py` suite checks the current pipeline against outputs of the historical (2020) implementation stored in `baseline_outputs.npz`, so the scientific transforms cannot drift silently.

@@ -137,3 +137,24 @@ def warnings_caught():
 
 def no_runtime_warnings(rec):
     return not any(issubclass(w.category, RuntimeWarning) for w in rec)
+
+
+def test_check_subset_sampled_positive():
+    """Distinct rows beyond the stride sample still count: exact result."""
+    subset = np.full((10000, 3), 5.0, dtype=np.float32)
+    # odd indices only: the ::2 strided sample stays constant, so the full
+    # np.unique fallback is what must return True
+    for r in (1, 3, 5, 7, 9):
+        subset[r] = [r, r + 1, r + 2]  # 5 distinct rows + the constant row
+    assert check_subset(subset, min_pixels=10, min_unique=4)
+
+
+def test_check_subset_constant_rejected():
+    subset = np.full((10000, 3), 5.0, dtype=np.float32)
+    assert not check_subset(subset, min_pixels=10, min_unique=2)
+
+
+def test_check_subset_one_below_min_unique():
+    subset = np.full((10000, 3), 5.0, dtype=np.float32)
+    subset[:5000] = [1.0, 2.0, 3.0]  # exactly 2 distinct rows, need 3
+    assert not check_subset(subset, min_pixels=10, min_unique=3)

@@ -116,3 +116,38 @@ def test_superpixels_supervision_gap(rgb_image):
             data, case, notc, 'Superpixels',
             dict(blur=3, n_best=10, pca_pct=95, n_segments=60, compactness=10),
             _Worker())
+
+
+def test_fast_knn_matches_sklearn():
+    from sklearn.neighbors import KNeighborsClassifier
+    rng = np.random.default_rng(0)
+    Xtr = rng.normal(size=(10000, 3))
+    ytr = (Xtr[:, 0] + 0.3 * rng.normal(size=10000) > 0).astype(int)
+    Xq = rng.normal(size=(200000, 3))
+    ref = KNeighborsClassifier(11).fit(Xtr, ytr).predict(Xq)
+    fast = era_main.FastKNeighborsClassifier(11).fit(Xtr, ytr).predict(Xq)
+    np.testing.assert_array_equal(fast, ref)
+
+
+def test_fast_knn_multiclass_vote():
+    from sklearn.neighbors import KNeighborsClassifier
+    rng = np.random.default_rng(1)
+    Xtr = rng.normal(size=(10000, 3))
+    ytr = rng.integers(0, 3, size=10000)
+    Xq = rng.normal(size=(50000, 3))
+    ref = KNeighborsClassifier(7).fit(Xtr, ytr).predict(Xq)
+    fast = era_main.FastKNeighborsClassifier(7).fit(Xtr, ytr).predict(Xq)
+    np.testing.assert_array_equal(fast, ref)
+
+
+def test_fast_knn_inside_clean_learning():
+    from cleanlab.classification import CleanLearning
+    rng = np.random.default_rng(2)
+    Xtr = rng.normal(size=(2000, 3))
+    ytr = (Xtr[:, 0] > 0).astype(int)
+    Xq = rng.normal(size=(500, 3))
+    clf = CleanLearning(clf=era_main.FastKNeighborsClassifier(11), seed=0,
+                        find_label_issues_kwargs={'n_jobs': 1})
+    clf.fit(Xtr, ytr)
+    pred = clf.predict(Xq)
+    assert pred.shape == (500,)

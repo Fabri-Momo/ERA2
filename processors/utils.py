@@ -46,13 +46,26 @@ def neutral_image(n_rows, n_cols, n_channels=3):
                    dtype=np.float32)
 
 
+def _has_min_unique(subset, min_unique):
+    """Exact test `number of distinct rows >= min_unique`, cheap in the common case."""
+    n = subset.shape[0]
+    probe = 4096
+    if n > probe:
+        # distinct rows in a strided sample <= distinct rows overall, so a
+        # positive answer on the sample is already exact
+        sample = subset[:: max(1, n // probe)]
+        if np.unique(sample, axis=0).shape[0] >= min_unique:
+            return True
+    return np.unique(subset, axis=0).shape[0] >= min_unique
+
+
 def check_subset(subset, min_pixels, min_unique, require_full_rank=False):
     """Return True if *subset* (N, C) can support whitening statistics."""
     if subset is None or subset.shape[0] < min_pixels:
         return False
     if not np.isfinite(subset).all():
         return False
-    if np.unique(subset, axis=0).shape[0] < min_unique:
+    if not _has_min_unique(subset, min_unique):
         return False
     if require_full_rank:
         x = subset.astype(np.float64)
