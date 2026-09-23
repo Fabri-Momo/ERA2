@@ -2,13 +2,69 @@
   <img src="resources/images/icon.png" width="128" alt="ERA icon">
 </p>
 
-<h1 align="center">ERA — Extraction of Rock Art</h1>
+<h1 align="center">ERA2 — Extraction of Rock Art</h1>
 
 <p align="center">
   Decorrelation stretch and supervised classification of rock paintings from digital images.<br>
   <a href="https://github.com/Fabri-Momo/ERA2/releases/latest"><b>Download the latest release</b></a> ·
   <a href="https://github.com/Fabri-Momo/ERA2/actions/workflows/build.yml">Build status</a>
 </p>
+
+ERA2 is the successor of [ERA 1.0](https://gitlab.huma-num.fr/fmonna/era-extraction-from-rock-art) (2022), which is kept unchanged as it corresponds to the published article:
+
+> Monna, F.; Rolland, T.; Magail, J.; Esin, Y.; Bohard, B.; Allard, A.-C.; Wilczek, J.; Chateau-Smith, C. (2022). *ERA: A new, fast, machine learning-based software to document rock paintings.* Journal of Cultural Heritage, 58, 91–101. https://doi.org/10.1016/j.culher.2022.09.018
+
+The source code is hosted on GitHub (https://github.com/Fabri-Momo/ERA2) and mirrored on the Huma-Num GitLab (https://gitlab.huma-num.fr/fmonna/era2).
+
+---
+
+## >>> DOWNLOADS <<<
+
+**All installers are published on GitHub Releases:**
+
+### https://github.com/Fabri-Momo/ERA2/releases/latest
+
+| Platform | File | Installation |
+|---|---|---|
+| Windows 10/11 x64 | `ERA-<version>-windows-x64.msi` | Run the installer; ERA appears in the Start menu |
+| macOS (Apple Silicon) | `ERA-<version>-macos-arm64.zip` | Unzip, drag `ERA.app` to Applications |
+| macOS (Intel) | `ERA-<version>-macos-x86_64.zip` | Unzip, drag `ERA.app` to Applications |
+
+Nothing else is required: no Python installation. See [Installation](#installation) for the SmartScreen / Gatekeeper notes.
+
+---
+
+## What is new since ERA 1.0
+
+### Installation and platforms
+
+- **Windows MSI installer** replaces the `ERA_Windows` folder to unpack by hand: installs into `Program Files\ERA`, creates Start-menu and desktop shortcuts, appears in *Apps & Features*, upgrades in place and uninstalls cleanly.
+- **macOS applications** for Apple Silicon and Intel (`ERA.app`). ERA 1.0 was Windows-only (plus a Linux AppImage).
+- Runs from source on Windows, macOS and Linux with a modern stack (Python 3.10, PyQt6, numpy 2, OpenCV 5, scikit-learn 1.7, cleanlab 2.9); ERA 1.0 required Python 3.7 and cleanlab 0.1.1.
+- New ERA² icon and an ochre theme; the interface is English only, whatever the system language.
+- Every push is tested and packaged by continuous integration; releases are built automatically from a version tag.
+
+### Speed and reproducibility
+
+- **Up to 40× faster** (see the table below); K-NN, previously almost unusable on large photographs, now runs in seconds.
+- **Reproducible results**: the same image and the same strokes always give exactly the same drawing, run after run (the confident-learning step was previously unseeded).
+- Large images are processed in bounded memory chunks, with a small cache for the 36 false-colour views instead of keeping them all in RAM.
+
+### Image processing
+
+- **Native bit depth**: 8- and 16-bit images are processed as floating-point data without early quantisation; alpha channels mark invalid pixels. 8-bit conversion only happens for display and export.
+- Whitening transforms are numerically identical to ERA 1.0 (verified by a compatibility test suite against the 2020 outputs), with deterministic component ordering and signs so that Windows and macOS give the same images.
+- Robustness: degenerate selections (too small, uniform colour) are reported instead of crashing; contrast stretch handles constant channels.
+
+### New tools
+
+- **Superpixels** classification method: SLIC segmentation followed by a random forest on superpixel colour statistics, with *Superpixel count* and *compactness* parameters.
+- **Version** shown in the title bar and the **? → About** box; per-user log file for diagnostics (`%LOCALAPPDATA%\ERA\era.log` on Windows, `~/Library/Logs/ERA/era.log` on macOS).
+- Interface hardening: controls are disabled during background computations, keyboard **U** / **R** undo / redo, no crashes when drawing before an image is loaded.
+
+### Unchanged
+
+- The whitening algorithms (ZCA, PCA, Cholesky, FastICA), the eight colour spaces, the contrast stretch, the *n*-best channel selection and the LR / SVM / K-NN classifiers with and without confident learning follow the 2022 article; results are identical to ERA 1.0.
 
 ---
 
@@ -141,6 +197,10 @@ ERA.spec             PyInstaller specification
 ## Reference
 
 If you use ERA in your work, please cite:
+
+> Monna, F.; Rolland, T.; Magail, J.; Esin, Y.; Bohard, B.; Allard, A.-C.; Wilczek, J.; Chateau-Smith, C. (2022). ERA: A new, fast, machine learning-based software to document rock paintings. *Journal of Cultural Heritage*, 58, 91–101. https://doi.org/10.1016/j.culher.2022.09.018
+
+Related work by the same team (relief visualisation from digital elevation models, [vSky2](https://gitlab.huma-num.fr/fmonna/vsky2)):
 
 > Rolland, T.; Monna, F.; Buoncristiani, J.-F.; Magail, J.; Esin, Y.; Bohard, B.; Chateau-Smith, C. (2022). Volumetric obscurance as a new tool to better visualize relief from digital elevation model. *Remote Sensing*, 14, 941. https://doi.org/10.3390/rs14040941
 
