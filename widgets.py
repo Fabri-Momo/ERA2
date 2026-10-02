@@ -261,17 +261,20 @@ class CustomScene(QtWidgets.QGraphicsScene):
         self.active_pen = None
 
     def set_pen_mode(self, mode):
+        """mode=None hides all layers; history and strokes are kept."""
         self.current_pen_mode = mode
         for l in self.layers.values():
             l.setVisible(False)
         if mode == 'select':
             self.layers['select'].setVisible(True)
-        else:
+        elif mode is not None:
             for l in ['include', 'exclude']:
                 self.layers[l].setVisible(True)
 
     def undo(self):
         layer = self.current_pen_mode
+        if layer is None:
+            return
         if self.history[layer]['all'] and self.history[layer]['length'] > 0:
             item = self.history[layer]['all'][self.history[layer]['length'] - 1]
             self.masked.addToGroup(item)
@@ -280,6 +283,8 @@ class CustomScene(QtWidgets.QGraphicsScene):
 
     def redo(self):
         layer = self.current_pen_mode
+        if layer is None:
+            return
         if self.history[layer]['all'] and self.history[layer]['length'] < len(self.history[layer]['all']):
             item = self.history[layer]['all'][self.history[layer]['length']]
             self.layers[layer].addToGroup(item)
@@ -288,6 +293,8 @@ class CustomScene(QtWidgets.QGraphicsScene):
     def flush_history(self, length=None, layer=None):
         if layer is None:
             layer = self.current_pen_mode
+        if layer is None:
+            return
         if length is None:
             length = self.history[layer]['length']
         while len(self.history[layer]['all']) > length:
@@ -330,7 +337,7 @@ class CustomScene(QtWidgets.QGraphicsScene):
         return pos
 
     def start_stroke(self, pos):
-        if self.background_pixmap is None:
+        if self.background_pixmap is None or self.current_pen_mode is None:
             return
         self.drawing = True
         self.flush_history()
@@ -340,7 +347,7 @@ class CustomScene(QtWidgets.QGraphicsScene):
             self.last_point = self.sanitized_pos(pos)
 
     def draw_stroke(self, pos):
-        if self.background_pixmap is None:
+        if self.background_pixmap is None or self.current_pen_mode is None:
             return
         layer = self.current_pen_mode
         active_pen = self.pens[layer]
@@ -355,7 +362,8 @@ class CustomScene(QtWidgets.QGraphicsScene):
                 self.last_point = pos
 
     def end_stroke(self, pos):
-        if self.background_pixmap is None or self.current_stroke is None:
+        if (self.background_pixmap is None or self.current_stroke is None
+                or self.current_pen_mode is None):
             return
         layer = self.current_pen_mode
         self.drawing = False

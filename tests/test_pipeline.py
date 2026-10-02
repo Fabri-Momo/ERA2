@@ -59,6 +59,22 @@ def test_update_with_selection(rgb_image, tmp_path):
         assert np.isfinite(w).all()
 
 
+def test_update_boost_stateless(rgb_image, tmp_path):
+    """update() recomputes from source_float: the previous boost is forgotten."""
+    p = str(tmp_path / 'img.png')
+    cv2.imwrite(p, cv2.cvtColor(
+        (rgb_image * 255).astype(np.uint8), cv2.COLOR_RGB2BGR))
+    data = ImageData()
+    data.load(p)
+    data.update(contrast_boost=3)
+    data.update(contrast_boost=1)
+    ref = ImageData()
+    ref.load(p, contrast_boost=1)
+    for name in data.whitened:
+        np.testing.assert_allclose(
+            data.whitened[name], ref.whitened[name], atol=1e-6, err_msg=name)
+
+
 def test_reset_clears_everything(rgb_image, tmp_path):
     p = str(tmp_path / 'img.png')
     cv2.imwrite(p, cv2.cvtColor(

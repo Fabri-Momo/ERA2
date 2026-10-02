@@ -33,7 +33,13 @@ def load_image(image_path):
                   non-finite.  Pixels are never considered invalid just for
                   being black or white.
     """
-    raw = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    # imdecode/fromfile instead of imread: cv2 cannot open non-ASCII
+    # paths on Windows.
+    try:
+        raw_bytes = np.fromfile(image_path, dtype=np.uint8)
+    except OSError:
+        raise IOError(f'Unable to read image: {image_path}')
+    raw = cv2.imdecode(raw_bytes, cv2.IMREAD_UNCHANGED)
     if raw is None:
         raise IOError(f'Unable to read image: {image_path}')
 
@@ -165,7 +171,8 @@ class ImageData:
         return list(color_interpreters_dict)
 
     # ------------------------------------------------------------------ load
-    def load(self, image_path, progress_cb=None, cancel_cb=None):
+    def load(self, image_path, contrast_boost=0,
+             progress_cb=None, cancel_cb=None):
         self.reset()
         self.image_path = image_path
         self.raw_source, self.valid_mask = load_image(image_path)
@@ -173,7 +180,7 @@ class ImageData:
         self.source_float = source_to_unit_float(self.raw_source)
         self.reference = ColorSpaceBundle(
             'RGB', display=self.raw_display, native=self.source_float)
-        self._compute_whitened(mask=None, contrast_boost=0,
+        self._compute_whitened(mask=None, contrast_boost=contrast_boost,
                                progress_cb=progress_cb, cancel_cb=cancel_cb)
 
     def update(self, mask=None, contrast_boost=0,

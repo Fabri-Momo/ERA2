@@ -191,6 +191,14 @@ def check_supervision(case_mask, not_case_mask,
     return None
 
 
+def imwrite_unicode(path, arr):
+    """cv2.imwrite variant that handles non-ASCII paths on Windows."""
+    ok, buf = cv2.imencode(os.path.splitext(path)[1], arr)
+    if not ok:
+        raise IOError(f'Unable to write image: {path}')
+    buf.tofile(path)
+
+
 # The label-issue filter runs on <= 50k samples: a process pool would cost
 # more in spawn overhead (and, frozen, in extra ERA.exe launches) than it
 # saves.  seed=0 makes the CV shuffle reproducible run to run.
@@ -544,7 +552,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         snap_action = QtWidgets.QAction(QtGui.QIcon(':/snap.svg'), self.tr('Snapshot'), self)  
         snap_action.setShortcut(QtGui.QKeySequence.Save)
-        snap_action.setStatusTip(self.tr("Capture the main window"))
+        snap_action.setStatusTip(self.tr(
+            "Save the current view (Supervision) or the checked results (Drawing)"))
         snap_action.triggered.connect(self.snapshot)
         
         
@@ -580,7 +589,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # status bar
         self.status = self.statusBar()
-        self.status.showMessage(self.tr("Ready to rock"))
+        self.file_label = QtWidgets.QLabel(self.tr('No image loaded'))
+        self.status.addWidget(self.file_label, 1)
         self.progress_bar = QtWidgets.QProgressBar()
         self.progress_bar.setFixedWidth(260)
         self.progress_bar.setTextVisible(False)
@@ -692,6 +702,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.decorrelation_layout.addWidget(self.process_widget, stretch=0)
 
         select_draw_method_radio = QtWidgets.QRadioButton('select')
+        self.select_draw_method_radio = select_draw_method_radio
         self.select_pen_size_spinbox = QtWidgets.QSpinBox()
         self.select_pen_size_spinbox.valueChanged.connect(self.set_select_pen_width)
         process_form_layout.addRow(self.tr('Stroke Width'), self.select_pen_size_spinbox)
@@ -793,13 +804,7 @@ class MainWindow(QtWidgets.QMainWindow):
         btnReprocess.setMinimumWidth(110)
         btnReprocess.setToolTip(self.tr("Reprocess <i>Calculate</i>"))      
         btnReprocess.clicked.connect(self.process)
-        #
-        btnSave = QtWidgets.QPushButton(self.tr("Save"), self)
-        btnSave.setMinimumWidth(110)
-        btnSave.setToolTip(self.tr("Save the checked images"))  
-        refine_layout.addRow(btnReprocess, btnSave)
-        btnSave.clicked.connect(self.saveImage)
-        #       
+        refine_layout.addRow(btnReprocess)
 
         ### selection groups
         self.draw_mode_selection_group = QtWidgets.QButtonGroup()
@@ -994,11 +999,11 @@ for painting the areas corresponding to the figure and the surrounding, respecti
             data = result['data']
 
             if data.ndim == 3 and data.shape[2] == 3:
-                # data is RGB; cv2.imwrite expects BGR
-                cv2.imwrite(image_path, cv2.cvtColor(data, cv2.COLOR_RGB2BGR))
+                # data is RGB; imwrite_unicode expects BGR
+                imwrite_unicode(image_path, cv2.cvtColor(data, cv2.COLOR_RGB2BGR))
             else:
                 # Grayscale mask: already in the right channel layout
-                cv2.imwrite(image_path, data)
+                imwrite_unicode(image_path, data)
 
             if key in ['without confident learning', 'with confident learning']:
                 svg_path = os.path.join(directory, f"{image_name}-{key.replace(' ', '_')}.svg")
@@ -1045,6 +1050,14 @@ for painting the areas corresponding to the figure and the surrounding, respecti
         self.refresh_tabbed_colorspace_picker()
         self.progress_bar.reset()
         self.status.clearMessage()
+        # Hide the yellow 'select' strokes and uncheck the radios; the
+        # strokes stay in memory and reappear when 'select' is clicked again.
+        self.draw_mode_selection_group.setExclusive(False)
+        for b in self.draw_mode_selection_group.buttons():
+            b.setChecked(False)
+        self.draw_mode_selection_group.setExclusive(True)
+        if self.graphics_scene is not None:
+            self.graphics_scene.set_pen_mode(None)
 
     def reparenting_ref_colorbundle(self):
         current_scroll = self.colorspace_container_widget.currentWidget()
@@ -1129,6 +1142,9 @@ for painting the areas corresponding to the figure and the surrounding, respecti
             self.channel_selection_group.addButton(item)
 
     def snapshot(self):
+        if self.tab_widget.currentIndex() == 1:
+            self.saveImage()
+            return
         color_bundle = self._current_color_bundle()
         if color_bundle is None or self.data.image_path is None:
             return
@@ -1233,6 +1249,7 @@ for painting the areas corresponding to the figure and the surrounding, respecti
 
         def job(worker):
             self.data.load(image_path,
+                           contrast_boost=self.contrast_boost_spinbox.value(),
                            progress_cb=worker.report,
                            cancel_cb=worker.isInterruptionRequested)
 
@@ -1243,6 +1260,9 @@ for painting the areas corresponding to the figure and the surrounding, respecti
         self.refresh_tabbed_colorspace_picker()
         self.progress_bar.reset()
         self.status.clearMessage()
+        path = os.path.normpath(self.data.image_path)
+        self.file_label.setText(f'{os.path.basename(path)}  —  {path}')
+        self.file_label.setToolTip(path)
         self.image_widget.init_view()
 
     def display_help(self):

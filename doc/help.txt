@@ -10,6 +10,6 @@ When the result looks good, push the "Continue" button and launch the full calcu
     
 At that step, you may change the blur intensity, the percentage of variance explained by PCA, and the number of channels used for calculation. Re-process to examine the effects of these changes.
 
-When the results are satifactory, check the box(es) of the image(s) you desire, and push the "Save" button.
+When the results are satifactory, check the box(es) of the image(s) you desire, and use the Snapshot action (Ctrl+S) to save them.
 
 If the supervised machine learning outputs are not  acceptable for your purpose, you may return to the "Color examination" tab and capture snapshots of the treatments you estimate appropriate for further manual delineation.
